@@ -83,15 +83,48 @@ class Playwright
 
   def initialize(options)
     @playwright_id = options['playwright_id']
-    @title = options['name']
+    @name = options['name']
     @year = options['year']
   end
 
-  def create;end
+  def create
+    raise "#{self} already in database" if @playwright_id
+    PlayDBConnection.instance.execute(<<-SQL, @name, @year)
+      INSERT INTO
+        plays (name, year)
+      VALUES
+        (?, ?)
+    SQL
+    @id = PlayDBConnection.instance.last_insert_row_id
+  end
 
-  def update;end
+  def update
+    raise "#{self} not in database" unless @playwright_id
+    PlayDBConnection.instance.execute(<<-SQL, @title, @year, @playwright_id, @id)
+      UPDATE
+        plays
+      SET
+        title = ?, year = ?, playwright_id = ?
+      WHERE
+        id = ?
+    SQL
+  end
 
-  def get_plays;end
+  def get_plays
+    PlayDBConnection.instance.execute(<<-SQL)
+      SELECT
+        *
+      FROM
+        plays
+      JOIN
+        playwrights
+      ON 
+        plays
+        plays.id = playwrights.playwright_id
+      WHERE
+        playwright.name == #{self.name}
+    SQL
+  end
 
 end
 
